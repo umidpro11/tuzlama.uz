@@ -44,4 +44,5 @@ Desktop.ini
 # --- Vaqtinchalik va kesh fayllar ---
 *.tmp
 *.temp
+db.sqlite3
 .cache/
