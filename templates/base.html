@@ -1,0 +1,101 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}tuzlama.uz — Tabiiy uy tuzlamalari{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}?v=2">
+    <link rel="icon" type="image/png" sizes="64x64" href="{% static 'img/favicon.png' %}?v=2">
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}?v=2">
+    <link rel="apple-touch-icon" href="{% static 'img/favicon.png' %}?v=2">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% block navbar %}
+{% if user.is_authenticated %}
+<header class="site-header">
+    <div class="nav-container">
+        <div class="nav-left">
+            <a href="{% url 'home' %}"
+               class="brand-btn"
+               title="Bosh sahifaga o'tish">
+                <img src="{% static 'img/favicon.svg' %}?v=2" alt="tuzlama.uz" style="width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;">
+                <span>tuzlama.uz</span>
+            </a>
+
+            <span class="nav-divider"></span>
+
+            <a href="{% url 'profile' %}" class="user-chip" title="Profil sahifasiga o'tish">
+                <span class="user-chip-name">{{ profile.display_name|default:user.username }}</span>
+                {% if profile.avatar %}
+                    <img src="{{ profile.avatar.url }}" alt="{{ profile.display_name }}" class="avatar-circle">
+                {% else %}
+                    <span class="avatar-circle">{{ profile.display_name|default:user.username|slice:":1"|upper }}</span>
+                {% endif %}
+            </a>
+        </div>
+
+        <div class="nav-right">
+            <nav class="nav-links">
+                <a href="{% url 'orders' %}" class="nav-link nav-orders-link {% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
+                    <span>📦 Buyurtmalar</span>
+                    <span class="orders-nav-badge {% if not orders_badge_count %}hidden{% endif %}" id="navOrdersBadge">{{ orders_badge_count }}</span>
+                </a>
+                <a href="{% url 'home' %}#biz-haqimizda" class="nav-link">Nega biz?</a>
+                <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">Profil</a>
+            </nav>
+
+            {% block nav_actions %}{% endblock %}
+
+            {% if is_site_admin %}
+                <a href="/admin/" target="_blank" rel="noopener" class="admin-ext-btn">Admin Panel ↗</a>
+            {% endif %}
+            <a href="{% url 'logout' %}" class="logout-btn">Chiqish</a>
+        </div>
+    </div>
+</header>
+{% endif %}
+{% endblock %}
+
+{% block content %}{% endblock %}
+
+{% if user.is_authenticated and is_site_admin %}
+<div class="toast" id="globalAdminToast"></div>
+<script>
+(function () {
+    let lastKnownCount = Number("{{ orders_badge_count|default:0 }}");
+    const badge = document.getElementById('navOrdersBadge');
+    const toast = document.getElementById('globalAdminToast');
+
+    function showGlobalToast(msg) {
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toast._t);
+        toast._t = setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+
+    setInterval(async () => {
+        try {
+            const resp = await fetch("{% url 'orders_poll' %}");
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (badge) {
+                badge.textContent = data.new_count;
+                badge.classList.toggle('hidden', data.new_count <= 0);
+            }
+            if (data.new_count > lastKnownCount) {
+                showGlobalToast("🔔 Adminga yangi zakas tushdi! Buyurtmalar bo'limini tekshiring.");
+            }
+            lastKnownCount = data.new_count;
+        } catch (e) {}
+    }, 10000);
+})();
+</script>
+{% endif %}
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

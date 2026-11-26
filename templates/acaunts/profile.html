@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Profil — tuzlama.uz{% endblock %}
+
+{% block content %}
+<main class="profile-shell">
+    <!-- Chap karta: Foydalanuvchi ma'lumotlari ko'rinishi -->
+    <section class="profile-summary-card">
+        <div style="text-align: center;">
+            {% if profile.avatar %}
+                <img src="{{ profile.avatar.url }}" alt="{{ profile.display_name }}" class="profile-avatar-large" id="avatarPreviewImg">
+            {% else %}
+                <div class="profile-avatar-large" id="avatarPreviewFallback">
+                    {{ profile.display_name|slice:":1"|upper }}
+                </div>
+                <img src="" alt="Avatar preview" class="profile-avatar-large" id="avatarPreviewImg" style="display: none;">
+            {% endif %}
+
+            <h2 style="font-size: 1.5rem; color: var(--emerald-950);">{{ profile.display_name }}</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">@{{ user.username }}</p>
+        </div>
+
+        <div class="profile-info-list">
+            <div class="profile-info-item">
+                <span>Ism</span>
+                <strong>{{ profile.ism|default:"Kiritilmagan" }}</strong>
+            </div>
+            <div class="profile-info-item">
+                <span>Familiya</span>
+                <strong>{{ profile.familiya|default:"Kiritilmagan" }}</strong>
+            </div>
+            <div class="profile-info-item">
+                <span>Telefon raqam</span>
+                <strong>{{ profile.telefon|default:"Kiritilmagan" }}</strong>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <a href="{% url 'home' %}" class="btn-detail" style="display: inline-block; width: 100%; text-align: center; padding: 12px;">
+                ← Bosh sahifaga qaytish
+            </a>
+        </div>
+    </section>
+
+    <!-- O'ng karta: Profilni tahrirlash -->
+    <section class="profile-form-card">
+        <div class="auth-card-header" style="margin-bottom: 18px;">
+            <h2>Profil ma'lumotlari</h2>
+            <p>Ism, familiya, telefon raqam va avataringizni tahrirlang</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert-box {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label class="form-label" for="prof_ism">Ism</label>
+                <input
+                    id="prof_ism"
+                    name="ism"
+                    type="text"
+                    class="form-input"
+                    value="{{ profile.ism }}"
+                    placeholder="Ismingiz"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="prof_familiya">Familiya</label>
+                <input
+                    id="prof_familiya"
+                    name="familiya"
+                    type="text"
+                    class="form-input"
+                    value="{{ profile.familiya }}"
+                    placeholder="Familiyangiz"
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="prof_telefon">Telefon raqam</label>
+                <input
+                    id="prof_telefon"
+                    name="telefon"
+                    type="tel"
+                    class="form-input"
+                    value="{{ profile.telefon }}"
+                    placeholder="+998 90 123 45 67"
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="prof_avatar">Avatar (rasm yuklash)</label>
+                <div class="file-dropzone">
+                    <input
+                        id="prof_avatar"
+                        name="avatar"
+                        type="file"
+                        accept="image/*"
+                    >
+                    <div class="file-dropzone-title">📷 Yangi avatar rasmini tanlang</div>
+                    <div class="file-dropzone-sub">PNG, JPG yoki WEBP formatdagi rasmni bosing</div>
+                    <span class="file-name-badge" id="selectedFileName" style="display: none;"></span>
+                </div>
+                {% if profile.avatar %}
+                    <label class="remove-avatar-toggle">
+                        <input type="checkbox" name="remove_avatar" value="1">
+                        <span>Joriy avatarni o'chirish</span>
+                    </label>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn-primary">Ma'lumotlarni saqlash</button>
+        </form>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('prof_avatar')?.addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const badge = document.getElementById('selectedFileName');
+    if (badge) {
+        badge.textContent = `Tanlandi: ${file.name}`;
+        badge.style.display = 'inline-block';
+    }
+    const reader = new FileReader();
+    reader.onload = function (ev) {
+        const img = document.getElementById('avatarPreviewImg');
+        const fallback = document.getElementById('avatarPreviewFallback');
+        if (img) {
+            img.src = ev.target.result;
+            img.style.display = 'block';
+        }
+        if (fallback) {
+            fallback.style.display = 'none';
+        }
+    };
+    reader.readAsDataURL(file);
+});
+</script>
+{% endblock %}
+

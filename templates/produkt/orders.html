@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Buyurtmalar — tuzlama.uz{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+{% endblock %}
+
+{% block content %}
+<main class="orders-page-shell">
+    <div class="orders-header-bar">
+        <div>
+            {% if is_admin_user %}
+                <span class="hero-kicker" style="background: var(--amber-100); color: #8b5207; border-color: rgba(217,138,30,0.3); margin-bottom: 10px;">
+                    👑 Sayt Admin Buyurtmalar Paneli (faqat tuzlama.uz)
+                </span>
+                <h1 style="font-size: 2rem; color: var(--emerald-950);">Barcha foydalanuvchilar buyurtmalari</h1>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">
+                    Uchtepa tumani ichida 50 000 so'm, boshqa tumanlarga +10 000 so'mdan oshadi. Kerak bo'lsa narxni qo'lda ham yangilang.
+                </p>
+            {% else %}
+                <h1 style="font-size: 2rem; color: var(--emerald-950);">Mening buyurtmalarim</h1>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">
+                    Faqat o'zingiz bergan buyurtmalar, xaritadagi manzilingiz va dastafka narxi shu yerda ko'rinadi.
+                </p>
+            {% endif %}
+        </div>
+        <a href="{% url 'home' %}" class="btn-detail" style="padding: 11px 16px; border-radius: 12px;">← Katalogga qaytish</a>
+    </div>
+
+    {% if is_admin_user and admin_store_address %}
+        <div class="alert-box alert-success" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 22px;">
+            <div>
+                <strong>🏠 Tuzlama tayyorlanadigan joy (faqat Adminga ko'rinadi):</strong><br>
+                <span>{{ admin_store_address }}</span>
+            </div>
+            <a href="{{ admin_store_gmaps_url }}" target="_blank" rel="noopener" class="map-ext-btn" style="background: #fff;">
+                📍 Google Maps'da ochish ↗
+            </a>
+        </div>
+    {% endif %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert-box {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if orders %}
+        <div class="orders-list">
+            {% for order in orders %}
+                <article class="order-card" id="order-card-{{ order.id }}">
+                    <!-- Chap ustun: Mijoz va buyurtma mahsulotlari -->
+                    <div>
+                        <div class="order-card-top">
+                            <div>
+                                <h2 style="font-size: 1.35rem; color: var(--emerald-950);">Buyurtma #{{ order.id }}</h2>
+                                <span style="font-size: 0.82rem; color: var(--text-muted);">{{ order.created_at|date:"d.m.Y H:i" }}</span>
+                            </div>
+                            <span class="order-status-pill status-{{ order.status }}">{{ order.get_status_display }}</span>
+                        </div>
+
+                        <div style="display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.9rem; margin-bottom: 10px;">
+                            <div><strong>Mijoz:</strong> {{ order.customer_name }} <span style="color: var(--text-muted);">(@{{ order.user.username }})</span></div>
+                            <div><strong>Telefon:</strong> {{ order.phone|default:"Kiritilmagan" }}</div>
+                        </div>
+
+                        {% if order.note %}
+                            <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 10px;">
+                                <strong>Izoh:</strong> {{ order.note }}
+                            </div>
+                        {% endif %}
+
+                        <div class="order-items-box">
+                            {% for item in order.items.all %}
+                                <div class="order-item-row">
+                                    <span>{{ item.product_name }} × <strong>{{ item.quantity }}</strong></span>
+                                    <strong>{{ item.formatted_line_total }} so'm</strong>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.94rem; margin-top: 12px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-muted);">Mahsulotlar summasi:</span>
+                                <strong>{{ order.formatted_items_total }} so'm</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-muted);">Dastafka narxi:</span>
+                                {% if order.formatted_delivery_price is not None %}
+                                    <strong style="color: var(--emerald-800);">{{ order.formatted_delivery_price }} so'm</strong>
+                                {% else %}
+                                    <span style="color: #9c5b06; font-weight: 600;">{{ order.formatted_yandex_estimate }} so'm</span>
+                                {% endif %}
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--border-soft); font-size: 1.1rem;">
+                                <strong>Jami summa:</strong>
+                                <strong style="color: var(--emerald-900); font-family: 'Outfit', sans-serif;">
+                                    {{ order.formatted_grand_total }} so'm
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- O'ng ustun: Google Maps, Lakatsiya va Dastafka narxi -->
+                    <div>
+                        <div class="order-map-mini">
+                            <iframe
+                                style="width: 100%; height: 100%; border: 0;"
+                                loading="lazy"
+                                referrerpolicy="no-referrer-when-downgrade"
+                                src="https://maps.google.com/maps?q={{ order.latitude|unlocalize }},{{ order.longitude|unlocalize }}&z=15&output=embed"></iframe>
+                        </div>
+
+                        <div style="font-size: 0.86rem; color: var(--text-main); margin-bottom: 8px;">
+                            <strong>📍 Yetkazish manzili:</strong> {{ order.address_text|default:"Xaritadan belgilangan" }}
+                            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                                Koordinata: {{ order.latitude|unlocalize }}, {{ order.longitude|unlocalize }}
+                                {% if is_admin_user %} · Yo'l: ~{{ order.distance_km|unlocalize }} km{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="map-ext-links">
+                            <a href="{{ order.google_maps_url }}" target="_blank" rel="noopener" class="map-ext-btn">📍 Google Maps'da ko'rish ↗</a>
+                            {% if is_admin_user %}
+                                <a href="{{ order.google_maps_route_url }}" target="_blank" rel="noopener" class="map-ext-btn" style="background: var(--emerald-100); color: var(--emerald-900);">
+                                    🗺️ Google Yo'nalish ↗
+                                </a>
+                                <a href="{{ order.yandex_maps_route_url }}" target="_blank" rel="noopener" class="map-ext-btn" style="background: var(--amber-100); color: #8b5207;">
+                                    🚕 Yandex Go / Yo'lni ko'rish ↗
+                                </a>
+                            {% endif %}
+                        </div>
+
+                        {% if order.status == 'new' or is_admin_user %}
+                            <div style="margin-bottom: 12px;">
+                                <button type="button" class="btn-detail" style="width: 100%; padding: 9px 12px;" onclick="toggleOrderLocEditor({{ order.id }}, {{ order.latitude|unlocalize }}, {{ order.longitude|unlocalize }})">
+                                    📍 Shu buyurtma lakatsiyasini o'zgartirish
+                                </button>
+                                <form method="post" action="{% url 'update_my_order_location' order.id %}" id="locEditor-{{ order.id }}" style="display: none; margin-top: 10px; padding: 12px; border-radius: 14px; background: var(--bg-cream); border: 1px solid var(--border-soft);">
+                                    {% csrf_token %}
+                                    <div id="editMap-{{ order.id }}" style="width: 100%; height: 180px; border-radius: 12px; margin-bottom: 8px; border: 1px solid var(--border-soft);"></div>
+                                    <input type="hidden" name="latitude" id="editLat-{{ order.id }}" value="{{ order.latitude|unlocalize }}">
+                                    <input type="hidden" name="longitude" id="editLng-{{ order.id }}" value="{{ order.longitude|unlocalize }}">
+                                    <input type="text" name="address_text" id="editAddr-{{ order.id }}" class="form-input" style="padding: 8px 10px; font-size: 0.85rem; margin-bottom: 8px;" value="{{ order.address_text }}" placeholder="Manzil">
+                                    <button type="submit" class="btn-add-cart" style="width: 100%; padding: 9px;">Yangi lakatsiyani saqlash</button>
+                                </form>
+                            </div>
+                        {% endif %}
+
+                        {% if is_admin_user %}
+                            <div class="yandex-est-box">
+                                🚕 <strong>Avtomatik tarif hisobi:</strong> {{ order.formatted_yandex_estimate }} so'm
+                                <div style="font-size: 0.78rem; margin-top: 2px;">
+                                    (Uchtepa: 50 000 so'm · Boshqa tuman: 60 000+ so'm)
+                                </div>
+                            </div>
+
+                            <form method="post" action="{% url 'update_order_delivery' order.id %}" class="admin-price-form">
+                                {% csrf_token %}
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div>
+                                        <label class="form-label" for="del_price_{{ order.id }}" style="font-size: 0.8rem;">Dastafka narxi (so'm)</label>
+                                        <input
+                                            id="del_price_{{ order.id }}"
+                                            name="delivery_price"
+                                            type="number"
+                                            step="500"
+                                            min="0"
+                                            class="form-input"
+                                            style="padding: 9px 11px; font-size: 0.9rem;"
+                                            value="{% if order.delivery_price is not None %}{{ order.delivery_price|floatformat:0 }}{% else %}{{ order.yandex_estimated_delivery|floatformat:0 }}{% endif %}"
+                                            placeholder="Masalan: 50000"
+                                            required
+                                        >
+                                    </div>
+                                    <div>
+                                        <label class="form-label" for="del_status_{{ order.id }}" style="font-size: 0.8rem;">Buyurtma holati</label>
+                                        <select id="del_status_{{ order.id }}" name="status" class="form-input" style="padding: 9px 11px; font-size: 0.88rem;">
+                                            {% for code, label in status_choices %}
+                                                <option value="{{ code }}" {% if order.status == code %}selected{% endif %}>{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn-primary" style="padding: 10px 14px; font-size: 0.9rem;">
+                                    Dastafka narxini saqlash ✅
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📦</div>
+            <h3>Hozircha buyurtmalar yo'q</h3>
+            <p>
+                {% if is_admin_user %}
+                    Foydalanuvchilar savatchadan buyurtma tasdiqlaganda bu yerda ko'rinadi.
+                {% else %}
+                    Katalogdan yoqqan tuzlamalarni savatchaga qo'shing va xaritadan manzilni tanlab buyurtma bering!
+                {% endif %}
+            </p>
+            <a href="{% url 'home' %}" class="btn-amber" style="display: inline-block;">Tuzlamalarni ko'rish</a>
+        </div>
+    {% endif %}
+
+    {% if is_admin_user and inquiries %}
+        <section style="margin-top: 40px;">
+            <h2 style="font-size: 1.5rem; color: var(--emerald-950); margin-bottom: 14px;">✉️ Mijozlardan kelgan murojaat va takliflar</h2>
+            <div class="orders-list">
+                {% for inq in inquiries %}
+                    <div class="filter-toolbar" style="margin-bottom: 0;">
+                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                            <strong>{{ inq.name }} (@{{ inq.user.username }}) · {{ inq.phone|default:"Telefon yo'q" }}</strong>
+                            <span style="font-size: 0.82rem; color: var(--text-muted);">{{ inq.created_at|date:"d.m.Y H:i" }}</span>
+                        </div>
+                        <p style="color: var(--text-main); font-size: 0.94rem;">{{ inq.message }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+const orderMiniMaps = {};
+
+window.toggleOrderLocEditor = function (orderId, lat, lng) {
+    const form = document.getElementById(`locEditor-${orderId}`);
+    if (!form) return;
+    const isHidden = form.style.display === 'none';
+    form.style.display = isHidden ? 'block' : 'none';
+
+    if (isHidden && typeof L !== 'undefined' && !orderMiniMaps[orderId]) {
+        const m = L.map(`editMap-${orderId}`).setView([lat, lng], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
+        const marker = L.marker([lat, lng], { draggable: true }).addTo(m);
+
+        function updateOrderFields(newLat, newLng) {
+            document.getElementById(`editLat-${orderId}`).value = newLat.toFixed(6);
+            document.getElementById(`editLng-${orderId}`).value = newLng.toFixed(6);
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${newLat}&lon=${newLng}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d && d.display_name) {
+                        document.getElementById(`editAddr-${orderId}`).value = d.display_name;
+                    }
+                })
+                .catch(() => {});
+        }
+
+        m.on('click', e => {
+            marker.setLatLng(e.latlng);
+            updateOrderFields(e.latlng.lat, e.latlng.lng);
+        });
+        marker.on('dragend', () => {
+            const p = marker.getLatLng();
+            updateOrderFields(p.lat, p.lng);
+        });
+        orderMiniMaps[orderId] = m;
+    } else if (isHidden && orderMiniMaps[orderId]) {
+        setTimeout(() => orderMiniMaps[orderId].invalidateSize(), 80);
+    }
+};
+
+{% if is_admin_user %}
+(function () {
+    let currentLatestId = Number("{{ latest_order_id|default:0 }}");
+    setInterval(async () => {
+        try {
+            const resp = await fetch("{% url 'orders_poll' %}");
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.latest_id > currentLatestId) {
+                window.location.reload();
+            }
+        } catch (e) {}
+    }, 8000);
+})();
+{% endif %}
+</script>
+{% endblock %}

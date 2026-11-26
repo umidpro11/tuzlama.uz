@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}Registratsiya — tuzlama.uz{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<main class="auth-page">
+    <div class="auth-bg-pattern"></div>
+
+    <div class="auth-wrapper">
+        <!-- Chap tomon: tuzlama.uz brend bo'limi -->
+        <section class="auth-brand-panel">
+            <div class="auth-brand-badge">
+                <span>🌿</span>
+                <span>tuzlama.uz oilasiga qo'shiling</span>
+            </div>
+
+            <a href="{% url 'home' %}" class="auth-brand-title" style="display: inline-block; width: fit-content;" title="Bosh sahifaga o'tish">tuzlama.uz</a>
+
+            <p class="auth-brand-desc">
+                Bir necha soniyada ro'yxatdan o'ting va tabiiy tuzlamalar katalogimiz,
+                maxsus ta'mlar hamda shaxsiy profilingizdan foydalaning.
+            </p>
+
+            <div class="auth-features">
+                <div class="auth-feature-card">
+                    <strong>✅ Oson ro'yxatdan o'tish</strong>
+                    <span>Faqat ism va parol kifoya</span>
+                </div>
+                <div class="auth-feature-card">
+                    <strong>🔐 Jonli tekshiruv</strong>
+                    <span>Har bir harf darhol tekshiriladi</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- O'ng tomon: Registratsiya formasi -->
+        <section class="auth-card">
+            <div class="auth-card-header">
+                <h2>Registratsiya</h2>
+                <p>Yangi akkaunt yaratish uchun ma'lumotlarni kiriting</p>
+            </div>
+
+            {% if error %}
+                <div class="alert-box alert-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="{% url 'register' %}" id="registerForm">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label class="form-label" for="reg_ism">Ism</label>
+                    <input
+                        id="reg_ism"
+                        name="ism"
+                        type="text"
+                        class="form-input"
+                        placeholder="Ismingizni kiriting"
+                        value="{{ entered_ism|default:'' }}"
+                        required
+                        autofocus
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="reg_parol1">Parol</label>
+                    <div class="input-wrap">
+                        <input
+                            id="reg_parol1"
+                            name="parol1"
+                            type="password"
+                            class="form-input has-toggle"
+                            placeholder="Parol o'ylab toping"
+                            required
+                        >
+                        <button type="button" class="toggle-pass-btn" onclick="toggleRegPass('reg_parol1', this)" aria-label="Parolni ko'rsatish">👁️</button>
+                    </div>
+                </div>
+
+                <!-- 2 ta parol o'rtasida harfma-harf jonli tekshiruv -->
+                <div class="char-checker-box" id="charCheckerBox">
+                    <div class="char-checker-top">
+                        <span class="char-checker-title">Harflar bo'yicha tekshiruv (1-ta bittalab):</span>
+                        <span class="char-checker-summary" id="charSummary"></span>
+                    </div>
+                    <div class="char-pills" id="charPills">
+                        <span class="char-placeholder">Parol va takroran parolni kiriting...</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="reg_parol2">Takroran parol</label>
+                    <div class="input-wrap">
+                        <input
+                            id="reg_parol2"
+                            name="parol2"
+                            type="password"
+                            class="form-input has-toggle"
+                            placeholder="Parolni qayta kiriting"
+                            required
+                        >
+                        <button type="button" class="toggle-pass-btn" onclick="toggleRegPass('reg_parol2', this)" aria-label="Parolni ko'rsatish">👁️</button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Ro'yxatdan o'tish</button>
+            </form>
+
+            <p class="auth-switch">
+                Allaqachon akkauntingiz bormi? <a href="{% url 'login' %}">Kirish</a>
+            </p>
+        </section>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleRegPass(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+    }
+}
+
+(function () {
+    const p1Input = document.getElementById('reg_parol1');
+    const p2Input = document.getElementById('reg_parol2');
+    const pillsWrap = document.getElementById('charPills');
+    const summaryEl = document.getElementById('charSummary');
+
+    function renderComparison() {
+        const p1 = p1Input.value;
+        const p2 = p2Input.value;
+
+        pillsWrap.innerHTML = '';
+
+        if (!p1 && !p2) {
+            pillsWrap.innerHTML = '<span class="char-placeholder">Parol va takroran parolni kiriting...</span>';
+            summaryEl.textContent = '';
+            summaryEl.className = 'char-checker-summary';
+            return;
+        }
+
+        const maxLen = Math.max(p1.length, p2.length);
+        let allMatch = p1.length > 0 && p1 === p2;
+
+        for (let i = 0; i < maxLen; i++) {
+            const c1 = p1[i];
+            const c2 = p2[i];
+            const pill = document.createElement('span');
+
+            if (c2 === undefined) {
+                pill.className = 'char-pill pending';
+                pill.textContent = `${i + 1}: •`;
+                allMatch = false;
+            } else if (c1 === c2) {
+                pill.className = 'char-pill match';
+                pill.textContent = `${c2} ✅`;
+            } else {
+                pill.className = 'char-pill mismatch';
+                pill.textContent = `${c2} ❌`;
+                allMatch = false;
+            }
+            pillsWrap.appendChild(pill);
+        }
+
+        if (allMatch) {
+            summaryEl.textContent = '✅ Bir xil';
+            summaryEl.className = 'char-checker-summary ok';
+        } else if (p2.length > 0) {
+            summaryEl.textContent = '❌ Mos emas';
+            summaryEl.className = 'char-checker-summary bad';
+        } else {
+            summaryEl.textContent = `${p1.length} ta belgi`;
+            summaryEl.className = 'char-checker-summary';
+        }
+    }
+
+    p1Input.addEventListener('input', renderComparison);
+    p2Input.addEventListener('input', renderComparison);
+})();
+</script>
+{% endblock %}
+

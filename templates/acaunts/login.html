@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}Kirish — tuzlama.uz{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<main class="auth-page">
+    <div class="auth-bg-pattern"></div>
+
+    <div class="auth-wrapper">
+        <!-- Chap tomon: tuzlama.uz brend bo'limi -->
+        <section class="auth-brand-panel">
+            <div class="auth-brand-badge">
+                <span>🫙</span>
+                <span>100% tabiiy uy retseptlari</span>
+            </div>
+
+            <a href="{% url 'home' %}" class="auth-brand-title" style="display: inline-block; width: fit-content;" title="Bosh sahifaga o'tish">tuzlama.uz</a>
+
+            <p class="auth-brand-desc">
+                O'zbekistonning eng sara, qarsildoq va xushbo'y tuzlamalari bir joyda.
+                An'anaviy ta'm, toza shisha bankalar va mehr bilan tayyorlangan mahsulotlar!
+            </p>
+
+            <div class="auth-features">
+                <div class="auth-feature-card">
+                    <strong>🥒 Yangi hosil</strong>
+                    <span>Har kuni saralangan bog' sabzavotlari</span>
+                </div>
+                <div class="auth-feature-card">
+                    <strong>🌿 Tabiiy ziravorlar</strong>
+                    <span>Shivit, sarimsoq, gilos va uzum bargi</span>
+                </div>
+                <div class="auth-feature-card">
+                    <strong>🏺 Uy sharoitida</strong>
+                    <span>Kimyoviy qo'shimchalarsiz asl retsept</span>
+                </div>
+                <div class="auth-feature-card">
+                    <strong>🚀 Tezkor buyurtma</strong>
+                    <span>Qulay katalog va darhol bog'lanish</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- O'ng tomon: Login formasi -->
+        <section class="auth-card">
+            <div class="auth-card-header">
+                <h2>Tizimga kirish</h2>
+                <p>Saytdan foydalanish uchun login va parolingizni kiriting</p>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert-box alert-success">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            {% if error %}
+                <div class="alert-box alert-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+                {% if request.GET.next %}
+                    <input type="hidden" name="next" value="{{ request.GET.next }}">
+                {% endif %}
+
+                <div class="form-group">
+                    <label class="form-label" for="id_ism">Ism (Login)</label>
+                    <input
+                        id="id_ism"
+                        name="ism"
+                        type="text"
+                        class="form-input"
+                        placeholder="Ismingizni kiriting"
+                        value="{{ entered_ism|default:'' }}"
+                        required
+                        autofocus
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="id_parol">Parol</label>
+                    <div class="input-wrap">
+                        <input
+                            id="id_parol"
+                            name="parol"
+                            type="password"
+                            class="form-input has-toggle"
+                            placeholder="Parolingizni kiriting"
+                            required
+                        >
+                        <button type="button" class="toggle-pass-btn" onclick="togglePass('id_parol', this)" aria-label="Parolni ko'rsatish">👁️</button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Saytga kirish →</button>
+            </form>
+
+            <p class="auth-switch">
+                Akkauntingiz yo'qmi? <a href="{% url 'register' %}">Registratsiya</a>
+            </p>
+        </section>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function togglePass(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+    }
+}
+</script>
+{% endblock %}
+

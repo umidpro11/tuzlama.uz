@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e6642"/>
+      <stop offset="100%" stop-color="#0b2619"/>
+    </linearGradient>
+    <linearGradient id="lidGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f7c85c"/>
+      <stop offset="50%" stop-color="#f0ab3d"/>
+      <stop offset="100%" stop-color="#d68516"/>
+    </linearGradient>
+    <linearGradient id="glassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#ffe6ad" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded emerald badge with golden rim -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bgGrad)" stroke="#f0ab3d" stroke-width="2.5"/>
+
+  <!-- Golden jar lid -->
+  <rect x="20" y="9" width="24" height="7" rx="3" fill="url(#lidGrad)"/>
+  <rect x="22" y="16" width="20" height="2.5" rx="1" fill="#ffe6ad" opacity="0.7"/>
+
+  <!-- Glass jar body -->
+  <rect x="14" y="18.5" width="36" height="36" rx="10" fill="url(#glassGrad)" stroke="#ffe6ad" stroke-width="2.4"/>
+
+  <!-- Brine wave -->
+  <path d="M16 27c4 2 8-2 16 0s12-2 16 0v17a8 8 0 0 1-8 8H24a8 8 0 0 1-8-8V27z" fill="#70e0a3" opacity="0.18"/>
+
+  <!-- Pickled cucumber -->
+  <rect x="21" y="27" width="9" height="20" rx="4.5" transform="rotate(-14 25.5 37)" fill="#4ed182" stroke="#14522f" stroke-width="1.2"/>
+  <!-- Cherry tomato -->
+  <circle cx="38.5" cy="39.5" r="6.5" fill="#ff5d47" stroke="#8f1d14" stroke-width="1.2"/>
+  <circle cx="36.5" cy="37.5" r="1.8" fill="#ffb8ad" opacity="0.85"/>
+  <!-- Garlic / spice -->
+  <circle cx="37" cy="29.5" r="3.2" fill="#ffe6ad"/>
+
+  <!-- Glass shine highlight -->
+  <path d="M19 24v21" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" opacity="0.45"/>
+</svg>
+

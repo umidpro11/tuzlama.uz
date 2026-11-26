@@ -1,0 +1,1089 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}tuzlama.uz — Uy sharoitida tayyorlangan sara tuzlamalar{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+{% endblock %}
+
+{% block nav_actions %}
+<button type="button" class="icon-pill-btn" onclick="openCartDrawer()">
+    <span>🛒 Savatcha</span>
+    <span class="cart-badge" id="navCartCount">0</span>
+</button>
+{% endblock %}
+
+{% block content %}
+{% if show_splash %}
+<div class="splash-overlay" id="welcomeSplash">
+    <div class="splash-logo-wrap">
+        <div class="splash-jar-icon">
+            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#ffe3a3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3h8v3H8z"/>
+                <path d="M6 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V8z"/>
+                <path d="M9 12c1.5-1 4.5 1 6 0"/>
+                <path d="M9 16c1.5-1 4.5 1 6 0"/>
+            </svg>
+        </div>
+        <h1 class="splash-title">tuzlama.uz</h1>
+        <p class="splash-sub">Xush kelibsiz, {{ profile.display_name }}! Tabiiy ta'mlar olamiga kirilmoqda...</p>
+    </div>
+    <div class="splash-loader">
+        <div class="splash-loader-bar"></div>
+    </div>
+</div>
+{% endif %}
+
+<main class="main-container">
+    <!-- HERO -->
+    <section class="hero-card">
+        <div>
+            <div class="hero-kicker">
+                <span>🫙</span>
+                <span>An'anaviy o'zbek uy tuzlamalari</span>
+            </div>
+            <h1 class="hero-title">
+                Har bir bankada <span>tabiiy lazzat</span> va mehr!
+            </h1>
+            <p class="hero-text">
+                Saralangan yangi sabzavotlar, xushbo'y ko'katlar va avloddan-avlodga o'tib kelayotgan
+                asl retsept asosida tayyorlangan uy tuzlamalarini kashf eting.
+            </p>
+            <div class="hero-actions">
+                <a href="#katalog" class="btn-amber">Mahsulotlarni ko'rish ↓</a>
+                <a href="#biz-haqimizda" class="btn-ghost-light">Tayyorlash jarayoni</a>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <strong>{{ total_products_count }}</strong>
+                    <span>Turdagi tuzlamalar</span>
+                </div>
+                <div class="hero-stat">
+                    <strong>{{ categories.count }}</strong>
+                    <span>Kategoriyalar</span>
+                </div>
+                <div class="hero-stat">
+                    <strong>100%</strong>
+                    <span>Tabiiy tarkib</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-visual">
+            <div class="hero-jar-card">
+                <svg width="94" height="94" viewBox="0 0 64 64" fill="none">
+                    <rect x="20" y="6" width="24" height="8" rx="3" fill="#f0ab3d"/>
+                    <rect x="14" y="15" width="36" height="42" rx="10" fill="rgba(255,255,255,0.14)" stroke="#ffe3a3" stroke-width="2.5"/>
+                    <circle cx="26" cy="31" r="5.5" fill="#5bd18b"/>
+                    <circle cx="38" cy="36" r="6" fill="#ff745c"/>
+                    <circle cx="28" cy="44" r="5" fill="#f7c85c"/>
+                    <path d="M21 22c4 2 8-2 12 0s7 2 10 0" stroke="#ffe3a3" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <h3>Qarsildoq va xushbo'y</h3>
+                <p>Har bir buyurtma toza shisha idishda, yangi holatda yetkaziladi.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- KATALOG VA KATEGORIYALAR -->
+    <section id="katalog">
+        <div class="section-head">
+            <div>
+                <h2>Bizning Tuzlamalar Katalogi</h2>
+                <p>O'zingizga yoqqan kategoriyani tanlang va ta'mlarni solishtiring</p>
+            </div>
+            <div id="visibleCounter" style="font-weight: 700; color: var(--emerald-800); font-size: 0.92rem;"></div>
+        </div>
+
+        <div class="filter-toolbar">
+            <div class="category-pills" id="categoryPills">
+                <button type="button" class="cat-pill active" data-cat="all">
+                    <span>Barchasi</span>
+                    <span class="cat-count">{{ total_products_count }}</span>
+                </button>
+                {% for cat in categories %}
+                    <button type="button" class="cat-pill" data-cat="{{ cat.id }}">
+                        <span>{{ cat.nom }}</span>
+                        <span class="cat-count">{{ cat.product_count }}</span>
+                    </button>
+                {% endfor %}
+            </div>
+
+            <div class="search-sort-row">
+                <div class="search-input-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Mahsulot nomi yoki tarkibi bo'yicha qidiring...">
+                    <button type="button" class="search-clear-btn" id="searchClearBtn" aria-label="Qidiruvni tozalash">✕</button>
+                </div>
+
+                <div class="custom-select" id="sortDropdown">
+                    <input type="hidden" id="sortSelect" value="default">
+                    <button type="button" class="custom-select-trigger" id="sortTrigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="custom-select-value" id="sortDisplay">✨ Saralash: Yangilari</span>
+                        <svg class="custom-select-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 7.5L10 12.5L15 7.5"/>
+                        </svg>
+                    </button>
+                    <div class="custom-select-menu" role="listbox">
+                        <button type="button" class="custom-select-option selected" data-value="default" data-label="✨ Saralash: Yangilari">
+                            <span class="custom-select-option-label"><span>✨</span><span>Saralash: Yangilari</span></span>
+                            <span class="custom-select-check">✓</span>
+                        </button>
+                        <button type="button" class="custom-select-option" data-value="price-asc" data-label="📉 Arzonidan qimmatiga">
+                            <span class="custom-select-option-label"><span>📉</span><span>Narx: Arzonidan qimmatiga</span></span>
+                            <span class="custom-select-check">✓</span>
+                        </button>
+                        <button type="button" class="custom-select-option" data-value="price-desc" data-label="📈 Qimmatidan arzoniga">
+                            <span class="custom-select-option-label"><span>📈</span><span>Narx: Qimmatidan arzoniga</span></span>
+                            <span class="custom-select-check">✓</span>
+                        </button>
+                        <button type="button" class="custom-select-option" data-value="fav" data-label="❤️ Faqat sevimlilar">
+                            <span class="custom-select-option-label"><span>❤️</span><span>Faqat sevimlilar</span></span>
+                            <span class="custom-select-check">✓</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if products %}
+            <div class="products-grid" id="productsGrid">
+                {% for product in products %}
+                    <article class="product-card"
+                             data-id="{{ product.id }}"
+                             data-cat="{{ product.catigoriya.id }}"
+                             data-cat-name="{{ product.catigoriya.nom }}"
+                             data-name="{{ product.nom }}"
+                             data-price="{{ product.narx|unlocalize }}"
+                             data-formatted-price="{{ product.formatted_narx }}"
+                             data-about="{{ product.about }}"
+                             data-img="{{ product.rasm.url }}">
+                        <div class="product-media" onclick="openProductModal(this.closest('.product-card'))">
+                            <img src="{{ product.rasm.url }}" alt="{{ product.nom }}" loading="lazy">
+                            <span class="product-cat-badge">{{ product.catigoriya.nom }}</span>
+                            <button type="button"
+                                    class="fav-btn"
+                                    onclick="event.stopPropagation(); toggleFavorite({{ product.id }}, this)"
+                                    title="Sevimlilarga qo'shish">🤍</button>
+                        </div>
+
+                        <div class="product-body">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+                                <h3 class="product-title" style="margin-bottom: 0;">{{ product.nom }}</h3>
+                                {% if product.review_count %}
+                                    <span style="font-size: 0.78rem; font-weight: 700; color: #9c5b06; background: var(--amber-100); padding: 2px 8px; border-radius: 999px; white-space: nowrap;">
+                                        ⭐ {{ product.avg_rating|floatformat:1 }} ({{ product.review_count }})
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <p class="product-about">{{ product.about }}</p>
+
+                            <div class="product-footer">
+                                <div class="product-price">
+                                    {{ product.formatted_narx }} <small>so'm</small>
+                                </div>
+                                <div class="product-btns">
+                                    <button type="button" class="btn-detail" onclick="openProductModal(this.closest('.product-card'))">Batafsil</button>
+                                    <button type="button" class="btn-add-cart" onclick="addToCart({{ product.id }})">+ Savat</button>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+
+            <div class="empty-state" id="filterEmptyState" style="display: none; margin-top: 18px;">
+                <div class="empty-state-icon">🔍</div>
+                <h3>Mos mahsulot topilmadi</h3>
+                <p>Qidiruv so'zini o'zgartirib ko'ring yoki barcha kategoriyalarni tanlang.</p>
+                <button type="button" class="btn-add-cart" onclick="resetFilters()" style="padding: 11px 20px; border-radius: 12px;">Filtrlarni tozalash</button>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">🫙</div>
+                <h3>Hozircha mahsulotlar qo'shilmagan</h3>
+                {% if user.username|lower == 'tuzlama.uz' %}
+                    <p>
+                        Admin panelga kirib avval <strong>Catigoriya</strong>, so'ngra <strong>Produkt</strong>
+                        bo'limidan tuzlamalarni qo'shing — ular shu yerda chiroyli ko'rinishda chiqadi!
+                    </p>
+                    <a href="/admin/" target="_blank" rel="noopener" class="btn-amber" style="display: inline-block;">Admin Panelni ochish ↗</a>
+                {% else %}
+                    <p>Tez orada yangi, tabiiy va mazali uy tuzlamalari qo'shiladi. Bizni kuzatib boring!</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </section>
+
+    <!-- NEGA BIZ -->
+    <section class="story-section" id="biz-haqimizda">
+        <div class="section-head">
+            <div>
+                <h2>Nega odamlar tuzlama.uz ni tanlaydi?</h2>
+                <p>Sifat, halollik va haqiqiy uy ta'mi — bizning asosiy tamoyilimiz</p>
+            </div>
+        </div>
+
+        <div class="story-grid">
+            <div class="story-card">
+                <div class="story-icon">🌱</div>
+                <h3>1. Saralangan yangi hosil</h3>
+                <p>Har bir bodring, pomidor, karam va qalampir daladan to'g'ri kelgan eng barra holatda tanlab olinadi.</p>
+            </div>
+            <div class="story-card">
+                <div class="story-icon">🧂</div>
+                <h3>2. An'anaviy tabiiy retsept</h3>
+                <p>Hech qanday sun'iy konservantlarsiz: faqat toza buloq suvi, tuz, shivit, gilos bargi va sarimsoq.</p>
+            </div>
+            <div class="story-card">
+                <div class="story-icon">🫙</div>
+                <h3>3. Steril shisha bankalar</h3>
+                <p>Mahsulotlar maxsus bug'langan shisha bankalarda qadoqlanadi, shuning uchun qarsildoq ta'm uzoq saqlanadi.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- TAKLIF VA MUROJAATLAR (BAZAGA SAQLANADI) -->
+    <section class="story-section" style="margin-top: 40px;">
+        <div class="filter-toolbar" style="padding: 26px;">
+            <div style="display: grid; grid-template-columns: 1fr 1.15fr; gap: 22px; align-items: center;">
+                <div>
+                    <h2 style="font-size: 1.55rem; color: var(--emerald-950); margin-bottom: 8px;">Savol yoki taklifingiz bormi?</h2>
+                    <p style="color: var(--text-muted); font-size: 0.93rem;">
+                        Maxsus tuzlama buyurtma qilmoqchi bo'lsangiz yoki fikr qoldirmoqchi bo'lsangiz, xabar yuboring — to'g'ridan-to'g'ri tuzlama.uz bazasiga va adminga yetib boradi.
+                    </p>
+                </div>
+                <form id="contactFeedbackForm" onsubmit="submitContactFeedback(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <input type="text" id="contactName" class="form-input" value="{{ profile.display_name }}" placeholder="Ismingiz" required>
+                        <input type="tel" id="contactPhone" class="form-input" value="{{ profile.telefon }}" placeholder="Telefon raqamingiz">
+                    </div>
+                    <textarea id="contactMsg" class="form-input" rows="2" placeholder="Savolingiz yoki taklifingizni yozing..." required></textarea>
+                    <button type="submit" class="btn-primary" style="width: auto; align-self: flex-start; padding: 11px 22px;">Yuborish ✉️</button>
+                </form>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="footer-inner">
+        <div>
+            <strong style="font-family: 'Outfit', sans-serif; font-size: 1.35rem; color: #ffe3a3;">tuzlama.uz</strong>
+            <p style="font-size: 0.88rem; margin-top: 4px;">Tabiiy uy tuzlamalari — ta'mi yodingizda qoladi.</p>
+        </div>
+        <div style="font-size: 0.86rem;">
+            © 2026 tuzlama.uz. Barcha huquqlar himoyalangan.
+        </div>
+    </div>
+</footer>
+
+<!-- BATAFSIL MODAL -->
+<div class="modal-backdrop" id="productModal" onclick="if(event.target===this) closeProductModal()">
+    <div class="modal-card">
+        <button type="button" class="modal-close" onclick="closeProductModal()">✕</button>
+        <div class="modal-img-wrap">
+            <img src="" alt="" id="modalImg">
+        </div>
+        <div class="modal-content" style="max-height: 85vh; overflow-y: auto;">
+            <div>
+                <span class="product-cat-badge" style="position: static; display: inline-block; margin-bottom: 10px;" id="modalCat"></span>
+                <h2 id="modalTitle" style="font-size: 1.7rem; color: var(--emerald-950); margin-bottom: 10px;"></h2>
+                <p id="modalAbout" style="color: var(--text-muted); font-size: 0.96rem; white-space: pre-line;"></p>
+            </div>
+
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-soft);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <strong style="font-size: 0.92rem; color: var(--emerald-950);">💬 Mijozlar izohlari</strong>
+                    <span id="modalRatingBadge" style="font-size: 0.82rem; font-weight: 700; color: #9c5b06;"></span>
+                </div>
+                <div id="modalReviewsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto; margin-bottom: 10px;"></div>
+                <form id="modalReviewForm" onsubmit="submitProductReview(event)" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <select id="reviewRatingSelect" class="form-input" style="width: auto; padding: 7px 10px; font-size: 0.84rem;">
+                        <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                        <option value="4">⭐⭐⭐⭐ (4)</option>
+                        <option value="3">⭐⭐⭐ (3)</option>
+                        <option value="2">⭐⭐ (2)</option>
+                        <option value="1">⭐ (1)</option>
+                    </select>
+                    <input type="text" id="reviewCommentInput" class="form-input" style="flex: 1; min-width: 140px; padding: 7px 10px; font-size: 0.84rem;" placeholder="Fikringizni yozing..." required>
+                    <button type="submit" class="btn-detail" style="padding: 7px 12px;">Yuborish</button>
+                </form>
+            </div>
+
+            <div>
+                <div style="font-family: 'Outfit', sans-serif; font-size: 1.65rem; font-weight: 800; color: var(--emerald-800); margin-bottom: 14px;">
+                    <span id="modalPrice"></span> <small style="font-size: 0.9rem; color: var(--text-muted);">so'm</small>
+                </div>
+                <button type="button" class="btn-primary" id="modalAddBtn">Savatchaga qo'shish 🛒</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SAVATCHA DRAWER -->
+<div class="drawer-backdrop" id="cartBackdrop" onclick="if(event.target===this) closeCartDrawer()">
+    <aside class="cart-drawer">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-soft); padding-bottom: 12px;">
+            <h3 style="font-size: 1.35rem; color: var(--emerald-950);">🛒 Savatchangiz</h3>
+            <button type="button" class="qty-btn" onclick="closeCartDrawer()" style="width: 34px; height: 34px;">✕</button>
+        </div>
+
+        <div class="cart-items" id="cartItemsList"></div>
+
+        <div style="border-top: 1px solid var(--border-soft); padding-top: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <span style="color: var(--text-muted); font-weight: 600;">Jami summa:</span>
+                <strong id="cartTotalText" style="font-family: 'Outfit', sans-serif; font-size: 1.35rem; color: var(--emerald-900);">0 so'm</strong>
+            </div>
+            <button type="button" class="btn-primary" onclick="openOrderMapModal()">Buyurtma berish →</button>
+        </div>
+    </aside>
+</div>
+
+<!-- XARITADAN JOY TANLASH VA TASDIQLASH MODALI -->
+<div class="modal-backdrop" id="orderMapModal" onclick="if(event.target===this) closeOrderMapModal()">
+    <div class="map-modal-card">
+        <button type="button" class="modal-close" onclick="closeOrderMapModal()">✕</button>
+        <div style="margin-bottom: 14px;">
+            <h2 style="font-size: 1.55rem; color: var(--emerald-950);">📍 Yetkazib berish manzilini tanlang</h2>
+            <p style="font-size: 0.9rem; color: var(--text-muted);">
+                Xaritadan uyingiz yoki yetkazib beriladigan joyni bosing, so'ngra <strong>Tasdiqlash</strong> tugmasini bosing.
+            </p>
+        </div>
+
+        <div class="map-search-bar">
+            <input type="text" id="mapSearchInput" class="form-input" style="flex: 1; min-width: 210px; padding: 10px 14px;" placeholder="Manzil, koordinata yoki Google Maps havolasini kiriting...">
+            <button type="button" class="btn-detail" style="padding: 10px 14px;" onclick="searchMapAddress()">Qidirish</button>
+            <button type="button" class="btn-detail" style="padding: 10px 14px;" onclick="detectMyLocation()">📍 Mening joyim</button>
+        </div>
+
+        {% if not google_maps_api_key %}
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+            <button type="button" class="cat-pill active" id="tabPinMap" onclick="switchOrderMapTab('pin')" style="padding: 6px 13px; font-size: 0.82rem;">📍 Xaritadan belgilash</button>
+            <button type="button" class="cat-pill" id="tabGmapsEmbed" onclick="switchOrderMapTab('gmaps')" style="padding: 6px 13px; font-size: 0.82rem;">🗺️ Google Maps ko'rinishi</button>
+        </div>
+        {% endif %}
+
+        <div id="orderMapCanvas" class="map-picker-canvas"></div>
+        <iframe id="googleMapsEmbedFrame"
+                class="map-picker-canvas"
+                style="display: none; border: 0;"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                src="https://maps.google.com/maps?q=41.3111,69.2797&z=13&output=embed"></iframe>
+
+        <div class="map-meta-strip">
+            <div>
+                <div style="font-weight: 700; color: var(--emerald-950);" id="pickedAddressLabel">Xaritadan joy tanlanmoqda...</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);" id="pickedCoordsLabel"></div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span id="estYandexBadge" style="font-weight: 700; color: #9c5b06; background: var(--amber-100); padding: 5px 10px; border-radius: 999px;"></span>
+                <a id="pickedGmapsLink" href="https://www.google.com/maps" target="_blank" rel="noopener" class="map-ext-btn">Google Maps'da ko'rish ↗</a>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="orderPhoneInput">Telefon raqam</label>
+                <input type="tel" id="orderPhoneInput" class="form-input" value="{{ profile.telefon }}" placeholder="+998 90 123 45 67">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="orderNoteInput">Qo'shimcha izoh (ixtiyoriy)</label>
+                <input type="text" id="orderNoteInput" class="form-input" placeholder="Masalan: 3-pod'ezd, 12-xonadon">
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 18px; flex-wrap: wrap;">
+            <div>
+                <span style="font-size: 0.84rem; color: var(--text-muted);">Mahsulotlar summasi:</span>
+                <strong id="modalOrderItemsTotal" style="font-family: 'Outfit', sans-serif; font-size: 1.25rem; color: var(--emerald-900); display: block;">0 so'm</strong>
+            </div>
+            <button type="button" class="btn-primary" id="confirmOrderBtn" style="width: auto; min-width: 220px;" onclick="confirmOrderSubmit()">
+                Tasdiqlash ✅
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toastBox"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if google_maps_api_key %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}"></script>
+{% else %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+{% endif %}
+<script>
+(function () {
+    const splash = document.getElementById('welcomeSplash');
+    if (splash) {
+        setTimeout(() => { splash.remove(); }, 2450);
+    }
+})();
+
+const cards = Array.from(document.querySelectorAll('.product-card'));
+const grid = document.getElementById('productsGrid');
+const searchInput = document.getElementById('searchInput');
+const searchClearBtn = document.getElementById('searchClearBtn');
+const sortSelect = document.getElementById('sortSelect');
+const sortDropdown = document.getElementById('sortDropdown');
+const sortTrigger = document.getElementById('sortTrigger');
+const sortDisplay = document.getElementById('sortDisplay');
+const sortOptions = document.querySelectorAll('.custom-select-option');
+const catPills = document.querySelectorAll('.cat-pill');
+const visibleCounter = document.getElementById('visibleCounter');
+const filterEmptyState = document.getElementById('filterEmptyState');
+
+localStorage.removeItem('tuzlama_favs');
+localStorage.removeItem('tuzlama_cart');
+localStorage.removeItem("tuzlama_favs_{{ user.id }}");
+localStorage.removeItem("tuzlama_cart_{{ user.id }}");
+
+let activeCat = 'all';
+let favorites = {{ favorite_ids_json|safe }};
+let dbCartState = {{ initial_cart_json|safe }};
+let currentModalProductId = null;
+
+function getCookie(name) {
+    const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return m ? decodeURIComponent(m[2]) : '';
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toastBox');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function formatMoney(num) {
+    return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+function syncFavoritesUI() {
+    cards.forEach(card => {
+        const id = Number(card.dataset.id);
+        const btn = card.querySelector('.fav-btn');
+        if (btn) {
+            btn.textContent = favorites.includes(id) ? '❤️' : '🤍';
+        }
+    });
+}
+
+window.toggleFavorite = async function (id, btn) {
+    try {
+        const resp = await fetch("{% url 'toggle_favorite' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ produkt_id: id }),
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+            favorites = data.favorite_ids || [];
+            btn.textContent = data.is_favorite ? '❤️' : '🤍';
+            showToast(data.is_favorite ? "Sevimlilarga saqlandi ❤️" : "Sevimlilardan olib tashlandi");
+            if (sortSelect && sortSelect.value === 'fav') applyFilters();
+        }
+    } catch (e) {
+        showToast("Xatolik yuz berdi");
+    }
+};
+
+function applyFilters() {
+    if (!grid) return;
+    const query = (searchInput?.value || '').trim().toLowerCase();
+    const sortMode = sortSelect?.value || 'default';
+
+    let matched = cards.filter(card => {
+        const catOk = activeCat === 'all' || card.dataset.cat === activeCat;
+        const name = card.dataset.name.toLowerCase();
+        const about = card.dataset.about.toLowerCase();
+        const catName = card.dataset.catName.toLowerCase();
+        const qOk = !query || name.includes(query) || about.includes(query) || catName.includes(query);
+        const favOk = sortMode !== 'fav' || favorites.includes(Number(card.dataset.id));
+        return catOk && qOk && favOk;
+    });
+
+    if (sortMode === 'price-asc') {
+        matched.sort((a, b) => parseFloat(a.dataset.price) - parseFloat(b.dataset.price));
+    } else if (sortMode === 'price-desc') {
+        matched.sort((a, b) => parseFloat(b.dataset.price) - parseFloat(a.dataset.price));
+    }
+
+    cards.forEach(c => { c.style.display = 'none'; });
+    matched.forEach(c => {
+        c.style.display = 'flex';
+        grid.appendChild(c);
+    });
+
+    if (visibleCounter) {
+        visibleCounter.textContent = `${matched.length} ta mahsulot ko'rsatilmoqda`;
+    }
+    if (filterEmptyState) {
+        filterEmptyState.style.display = matched.length === 0 ? 'block' : 'none';
+    }
+}
+
+function setSortValue(value, label) {
+    if (sortSelect) sortSelect.value = value;
+    if (sortDisplay) sortDisplay.textContent = label;
+    sortOptions.forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.value === value);
+    });
+}
+
+window.resetFilters = function () {
+    activeCat = 'all';
+    if (searchInput) searchInput.value = '';
+    searchClearBtn?.classList.remove('visible');
+    setSortValue('default', '✨ Saralash: Yangilari');
+    catPills.forEach(p => p.classList.toggle('active', p.dataset.cat === 'all'));
+    applyFilters();
+};
+
+catPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+        activeCat = pill.dataset.cat;
+        catPills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        applyFilters();
+    });
+});
+
+searchInput?.addEventListener('input', () => {
+    searchClearBtn?.classList.toggle('visible', searchInput.value.length > 0);
+    applyFilters();
+});
+
+searchClearBtn?.addEventListener('click', () => {
+    if (searchInput) searchInput.value = '';
+    searchClearBtn.classList.remove('visible');
+    applyFilters();
+    searchInput?.focus();
+});
+
+sortTrigger?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = sortDropdown.classList.toggle('open');
+    sortTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+});
+
+sortOptions.forEach(opt => {
+    opt.addEventListener('click', () => {
+        setSortValue(opt.dataset.value, opt.dataset.label);
+        sortDropdown.classList.remove('open');
+        sortTrigger.setAttribute('aria-expanded', 'false');
+        applyFilters();
+    });
+});
+
+document.addEventListener('click', (e) => {
+    if (sortDropdown && !sortDropdown.contains(e.target)) {
+        sortDropdown.classList.remove('open');
+        sortTrigger?.setAttribute('aria-expanded', 'false');
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sortDropdown?.classList.contains('open')) {
+        sortDropdown.classList.remove('open');
+        sortTrigger?.setAttribute('aria-expanded', 'false');
+    }
+});
+
+/* Quick view modal & DB Reviews */
+function renderModalReviews(data) {
+    const list = document.getElementById('modalReviewsList');
+    const badge = document.getElementById('modalRatingBadge');
+    if (data.review_count > 0) {
+        badge.textContent = `⭐ ${data.avg_rating} (${data.review_count} ta)`;
+    } else {
+        badge.textContent = "Hali baho yo'q";
+    }
+    if (!data.reviews || data.reviews.length === 0) {
+        list.innerHTML = '<div style="font-size:0.82rem; color:var(--text-muted);">Birinchi bo\'lib izoh qoldiring!</div>';
+        return;
+    }
+    list.innerHTML = data.reviews.map(r => `
+        <div style="background:var(--bg-cream); padding:7px 10px; border-radius:10px; font-size:0.82rem;">
+            <div style="display:flex; justify-content:space-between; font-weight:700; color:var(--emerald-950);">
+                <span>${r.author}</span>
+                <span style="color:#b86b08;">${'⭐'.repeat(r.rating)}</span>
+            </div>
+            <div style="color:var(--text-main); margin-top:2px;">${r.comment}</div>
+        </div>
+    `).join('');
+}
+
+window.submitProductReview = async function (e) {
+    e.preventDefault();
+    if (!currentModalProductId) return;
+    const rating = Number(document.getElementById('reviewRatingSelect').value || 5);
+    const commentInput = document.getElementById('reviewCommentInput');
+    const comment = (commentInput.value || '').trim();
+    if (!comment) return;
+
+    const resp = await fetch(`/products/${currentModalProductId}/review/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ rating, comment }),
+    });
+    const data = await resp.json();
+    if (resp.ok && data.ok) {
+        commentInput.value = '';
+        renderModalReviews(data);
+        showToast("Izohingiz bazaga saqlandi ✅");
+    } else {
+        showToast(data.error || "Izoh saqlanmadi");
+    }
+};
+
+window.submitContactFeedback = async function (e) {
+    e.preventDefault();
+    const name = document.getElementById('contactName').value;
+    const phone = document.getElementById('contactPhone').value;
+    const msgEl = document.getElementById('contactMsg');
+    const message = (msgEl.value || '').trim();
+    if (!message) return;
+
+    const resp = await fetch("{% url 'submit_contact' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ name, phone, message }),
+    });
+    const data = await resp.json();
+    if (resp.ok && data.ok) {
+        msgEl.value = '';
+        showToast(data.message);
+    } else {
+        showToast(data.error || "Yuborishda xatolik");
+    }
+};
+
+window.openProductModal = function (card) {
+    const id = Number(card.dataset.id);
+    currentModalProductId = id;
+    document.getElementById('modalImg').src = card.dataset.img;
+    document.getElementById('modalImg').alt = card.dataset.name;
+    document.getElementById('modalCat').textContent = card.dataset.catName;
+    document.getElementById('modalTitle').textContent = card.dataset.name;
+    document.getElementById('modalAbout').textContent = card.dataset.about;
+    document.getElementById('modalPrice').textContent = card.dataset.formattedPrice;
+    document.getElementById('modalAddBtn').onclick = function () {
+        addToCart(id);
+        closeProductModal();
+    };
+    document.getElementById('modalReviewsList').innerHTML = '<div style="font-size:0.82rem; color:var(--text-muted);">Yuklanmoqda...</div>';
+    document.getElementById('productModal').classList.add('open');
+
+    fetch(`/products/${id}/reviews/`)
+        .then(r => r.json())
+        .then(d => { if (d.ok) renderModalReviews(d); })
+        .catch(() => {});
+};
+
+window.closeProductModal = function () {
+    document.getElementById('productModal').classList.remove('open');
+};
+
+/* DB-backed Cart drawer */
+function renderCart() {
+    const list = document.getElementById('cartItemsList');
+    const badge = document.getElementById('navCartCount');
+    const totalEl = document.getElementById('cartTotalText');
+
+    const items = dbCartState.items || [];
+    list.innerHTML = '';
+
+    items.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'cart-item';
+        row.innerHTML = `
+            <img src="${p.img}" alt="${p.name}">
+            <div style="flex:1;">
+                <div style="font-weight:700; font-size:0.93rem; color:var(--emerald-950);">${p.name}</div>
+                <div style="font-size:0.84rem; color:var(--emerald-700); font-weight:600;">${p.formatted_price} so'm</div>
+                <div class="qty-controls">
+                    <button type="button" class="qty-btn" onclick="changeQty(${p.id}, -1)">−</button>
+                    <span style="font-weight:700; min-width:18px; text-align:center;">${p.quantity}</span>
+                    <button type="button" class="qty-btn" onclick="changeQty(${p.id}, 1)">+</button>
+                </div>
+            </div>
+            <button type="button" class="qty-btn" onclick="changeQty(${p.id}, -${p.quantity})" title="O'chirish">🗑</button>
+        `;
+        list.appendChild(row);
+    });
+
+    if (items.length === 0) {
+        list.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:40px;">Savatchangiz hozircha bo\'sh. Yoqqan tuzlamalarni qo\'shing!</p>';
+    }
+
+    badge.textContent = dbCartState.total_count || 0;
+    totalEl.textContent = `${dbCartState.formatted_total || '0'} so'm`;
+}
+
+window.addToCart = async function (id) {
+    try {
+        const resp = await fetch("{% url 'cart_update' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ produkt_id: id, delta: 1 }),
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+            dbCartState = data;
+            renderCart();
+            showToast("Mahsulot bazadagi savatchaga saqlandi 🛒");
+        }
+    } catch (e) {
+        showToast("Xatolik yuz berdi");
+    }
+};
+
+window.changeQty = async function (id, delta) {
+    try {
+        const resp = await fetch("{% url 'cart_update' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ produkt_id: id, delta }),
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+            dbCartState = data;
+            renderCart();
+        }
+    } catch (e) {}
+};
+
+window.openCartDrawer = function () {
+    renderCart();
+    document.getElementById('cartBackdrop').classList.add('open');
+};
+
+window.closeCartDrawer = function () {
+    document.getElementById('cartBackdrop').classList.remove('open');
+};
+
+/* Map Picker & Order Submission (store location stays private on server) */
+const DEFAULT_LAT = 41.3111;
+const DEFAULT_LNG = 69.2797;
+const HAS_GMAPS_KEY = {{ google_maps_api_key|yesno:"true,false" }};
+let orderMap = null;
+let orderMarker = null;
+let gmapGeocoder = null;
+let pickedLat = DEFAULT_LAT;
+let pickedLng = DEFAULT_LNG;
+let pickedAddress = "Toshkent shahri";
+
+async function fetchDeliveryEstimate(lat, lng, addrText) {
+    const badge = document.getElementById('estYandexBadge');
+    if (!badge) return;
+    try {
+        const resp = await fetch("{% url 'estimate_delivery' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+                latitude: lat,
+                longitude: lng,
+                address_text: addrText || '',
+            }),
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+            badge.textContent = `🚚 Dastafka (${data.zone_label}): ${data.formatted_delivery_price} so'm`;
+        }
+    } catch (e) {}
+}
+
+function updatePickedLocationUI(lat, lng, customAddress) {
+    pickedLat = Number(lat);
+    pickedLng = Number(lng);
+    document.getElementById('pickedCoordsLabel').textContent = `Koordinata: ${pickedLat.toFixed(6)}, ${pickedLng.toFixed(6)}`;
+    document.getElementById('pickedGmapsLink').href = `https://www.google.com/maps?q=${pickedLat},${pickedLng}`;
+    const gFrame = document.getElementById('googleMapsEmbedFrame');
+    if (gFrame) {
+        gFrame.src = `https://maps.google.com/maps?q=${pickedLat},${pickedLng}&z=16&output=embed`;
+    }
+
+    if (customAddress) {
+        pickedAddress = customAddress;
+        document.getElementById('pickedAddressLabel').textContent = pickedAddress;
+        fetchDeliveryEstimate(pickedLat, pickedLng, pickedAddress);
+    } else if (HAS_GMAPS_KEY && gmapGeocoder) {
+        gmapGeocoder.geocode({ location: { lat: pickedLat, lng: pickedLng } }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                pickedAddress = results[0].formatted_address;
+            } else {
+                pickedAddress = `${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)}`;
+            }
+            document.getElementById('pickedAddressLabel').textContent = pickedAddress;
+            fetchDeliveryEstimate(pickedLat, pickedLng, pickedAddress);
+        });
+    } else {
+        pickedAddress = `${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)}`;
+        document.getElementById('pickedAddressLabel').textContent = "Manzil aniqlanmoqda...";
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${pickedLat}&lon=${pickedLng}`)
+            .then(r => r.json())
+            .then(d => {
+                if (d && d.display_name) {
+                    pickedAddress = d.display_name;
+                    document.getElementById('pickedAddressLabel').textContent = pickedAddress;
+                } else {
+                    document.getElementById('pickedAddressLabel').textContent = pickedAddress;
+                }
+                fetchDeliveryEstimate(pickedLat, pickedLng, pickedAddress);
+            })
+            .catch(() => {
+                document.getElementById('pickedAddressLabel').textContent = pickedAddress;
+                fetchDeliveryEstimate(pickedLat, pickedLng, pickedAddress);
+            });
+    }
+}
+
+window.switchOrderMapTab = function (mode) {
+    const canvas = document.getElementById('orderMapCanvas');
+    const gFrame = document.getElementById('googleMapsEmbedFrame');
+    const tPin = document.getElementById('tabPinMap');
+    const tGmaps = document.getElementById('tabGmapsEmbed');
+    if (!canvas || !gFrame) return;
+
+    if (mode === 'gmaps') {
+        canvas.style.display = 'none';
+        gFrame.style.display = 'block';
+        gFrame.src = `https://maps.google.com/maps?q=${pickedLat},${pickedLng}&z=16&output=embed`;
+        tPin?.classList.remove('active');
+        tGmaps?.classList.add('active');
+    } else {
+        gFrame.style.display = 'none';
+        canvas.style.display = 'block';
+        tGmaps?.classList.remove('active');
+        tPin?.classList.add('active');
+        orderMap?.invalidateSize?.();
+    }
+};
+
+function setMapPin(lat, lng, zoom) {
+    if (HAS_GMAPS_KEY && window.google && orderMap && orderMarker) {
+        const pos = { lat: Number(lat), lng: Number(lng) };
+        orderMap.setCenter(pos);
+        if (zoom) orderMap.setZoom(zoom);
+        orderMarker.setPosition(pos);
+    } else if (orderMap && orderMarker) {
+        orderMap.setView([lat, lng], zoom || 15);
+        orderMarker.setLatLng([lat, lng]);
+    }
+}
+
+function initOrderMap() {
+    if (orderMap) return;
+    if (HAS_GMAPS_KEY && window.google && google.maps) {
+        const startPos = { lat: pickedLat, lng: pickedLng };
+        orderMap = new google.maps.Map(document.getElementById('orderMapCanvas'), {
+            center: startPos,
+            zoom: 13,
+        });
+        gmapGeocoder = new google.maps.Geocoder();
+        orderMarker = new google.maps.Marker({
+            position: startPos,
+            map: orderMap,
+            draggable: true,
+        });
+        orderMap.addListener('click', (e) => {
+            orderMarker.setPosition(e.latLng);
+            updatePickedLocationUI(e.latLng.lat(), e.latLng.lng());
+        });
+        orderMarker.addListener('dragend', () => {
+            const p = orderMarker.getPosition();
+            updatePickedLocationUI(p.lat(), p.lng());
+        });
+        updatePickedLocationUI(pickedLat, pickedLng, "Toshkent shahri (Google Maps'dan aniq joyni bosing)");
+        return;
+    }
+
+    if (typeof L === 'undefined') {
+        switchOrderMapTab('gmaps');
+        updatePickedLocationUI(pickedLat, pickedLng, "Toshkent shahri (Google Maps)");
+        return;
+    }
+
+    orderMap = L.map('orderMapCanvas').setView([pickedLat, pickedLng], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+    }).addTo(orderMap);
+
+    orderMarker = L.marker([pickedLat, pickedLng], { draggable: true }).addTo(orderMap);
+
+    orderMap.on('click', function (e) {
+        orderMarker.setLatLng(e.latlng);
+        updatePickedLocationUI(e.latlng.lat, e.latlng.lng);
+    });
+
+    orderMarker.on('dragend', function () {
+        const pos = orderMarker.getLatLng();
+        updatePickedLocationUI(pos.lat, pos.lng);
+    });
+
+    updatePickedLocationUI(pickedLat, pickedLng, "Toshkent shahri (xaritadan aniq joyni bosing)");
+}
+
+window.openOrderMapModal = function () {
+    const items = dbCartState.items || [];
+    if (items.length === 0) {
+        showToast("Avval savatchaga mahsulot qo'shing!");
+        return;
+    }
+
+    document.getElementById('modalOrderItemsTotal').textContent = `${dbCartState.formatted_total || '0'} so'm`;
+
+    closeCartDrawer();
+    document.getElementById('mapSearchInput').value = '';
+    document.getElementById('orderNoteInput').value = '';
+    document.getElementById('orderMapModal').classList.add('open');
+    setTimeout(() => {
+        initOrderMap();
+        setMapPin(DEFAULT_LAT, DEFAULT_LNG, 13);
+        updatePickedLocationUI(DEFAULT_LAT, DEFAULT_LNG, "Toshkent shahri (xaritadan aniq joyni bosing)");
+        switchOrderMapTab('pin');
+        orderMap?.invalidateSize?.();
+    }, 120);
+};
+
+window.closeOrderMapModal = function () {
+    document.getElementById('orderMapModal').classList.remove('open');
+};
+
+window.detectMyLocation = function () {
+    if (!navigator.geolocation) {
+        showToast("Brauzer GPS joylashuvni qo'llab-quvvatlamaydi");
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const { latitude, longitude } = pos.coords;
+            setMapPin(latitude, longitude, 16);
+            updatePickedLocationUI(latitude, longitude);
+        },
+        () => showToast("Joylashuvga ruxsat berilmadi, xaritadan qo'lda belgilang")
+    );
+};
+
+window.searchMapAddress = function () {
+    const q = (document.getElementById('mapSearchInput').value || '').trim();
+    if (!q) return;
+
+    // Support direct coordinates or Google Maps URL (@lat,lng or q=lat,lng)
+    const coordMatch = q.match(/(-?\d{1,2}\.\d{3,})\s*[, ]\s*(-?\d{1,3}\.\d{3,})/);
+    if (coordMatch) {
+        const lat = parseFloat(coordMatch[1]);
+        const lon = parseFloat(coordMatch[2]);
+        setMapPin(lat, lon, 16);
+        updatePickedLocationUI(lat, lon);
+        return;
+    }
+
+    if (HAS_GMAPS_KEY && gmapGeocoder) {
+        gmapGeocoder.geocode({ address: `${q}, Uzbekistan` }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                const loc = results[0].geometry.location;
+                setMapPin(loc.lat(), loc.lng(), 15);
+                updatePickedLocationUI(loc.lat(), loc.lng(), results[0].formatted_address);
+            } else {
+                showToast("Bunday manzil topilmadi, xaritadan belgilang");
+            }
+        });
+        return;
+    }
+
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q + ', Uzbekistan')}`)
+        .then(r => r.json())
+        .then(res => {
+            if (res && res.length > 0) {
+                const lat = parseFloat(res[0].lat);
+                const lon = parseFloat(res[0].lon);
+                setMapPin(lat, lon, 15);
+                updatePickedLocationUI(lat, lon, res[0].display_name);
+            } else {
+                showToast("Bunday manzil topilmadi, xaritadan belgilang");
+            }
+        })
+        .catch(() => showToast("Qidiruvda xatolik yuz berdi"));
+};
+
+window.confirmOrderSubmit = async function () {
+    const items = (dbCartState.items || [])
+        .filter(p => p.quantity > 0)
+        .map(p => ({ id: Number(p.id), quantity: p.quantity }));
+
+    if (items.length === 0) {
+        showToast("Savatcha bo'sh!");
+        return;
+    }
+
+    const btn = document.getElementById('confirmOrderBtn');
+    btn.disabled = true;
+    btn.textContent = "Yuborilmoqda...";
+
+    try {
+        const resp = await fetch("{% url 'create_order' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+                items,
+                latitude: pickedLat,
+                longitude: pickedLng,
+                address_text: pickedAddress,
+                phone: document.getElementById('orderPhoneInput').value,
+                note: document.getElementById('orderNoteInput').value,
+            }),
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+            dbCartState = { items: [], total_count: 0, total_amount: 0, formatted_total: '0' };
+            renderCart();
+            closeOrderMapModal();
+            showToast(data.message || "Adminga zakas tushdi! ✅");
+            setTimeout(() => { window.location.href = "{% url 'orders' %}"; }, 1300);
+        } else {
+            showToast(data.error || "Buyurtma yuborishda xatolik!");
+        }
+    } catch (e) {
+        showToast("Server bilan aloqa uzildi!");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Tasdiqlash ✅";
+    }
+};
+
+syncFavoritesUI();
+applyFilters();
+renderCart();
+</script>
+{% endblock %}
+
